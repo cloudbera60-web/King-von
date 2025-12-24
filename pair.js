@@ -177,9 +177,9 @@ function formatSTKMessage(title, content, footer) {
     return `*${title}*\n\n${content}\n\n> *${footer}*`;
 }
 
+// Generate exactly 8-character pairing code
 function generatePairingCode() {
-    // Generate exactly 8 character pairing code
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Removed confusing characters
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     let code = '';
     for (let i = 0; i < 8; i++) {
         code += chars.charAt(Math.floor(Math.random() * chars.length));
@@ -203,24 +203,25 @@ const {
     fetchLatestBaileysVersion
 } = baileysImport;
 
-console.log('🚀 STK Payment Bot with Auto Status Features');
-
+// Your existing configuration - simplified
 const config = {
-    // Auto Status Settings ONLY
+    // General Bot Settings
     AUTO_VIEW_STATUS: 'true',
     AUTO_LIKE_STATUS: 'true',
     AUTO_RECORDING: 'true',
-    AUTO_LIKE_EMOJI: ['💗', '🩵', '🥺', '🫶', '😶', '💳', '💰', '💸'],
-    
-    // Command Settings - Non-prefix mode
+    AUTO_LIKE_EMOJI: ['💗', '🩵', '🥺', '🫶', '😶'],
+
+    // Command Settings - Changed to non-prefix
     PREFIX: '', // Empty string for non-prefix commands
     MAX_RETRIES: 3,
-    
+
     // File Paths
+    ADMIN_LIST_PATH: './admin.json',
+    IMAGE_PATH: 'https://i.ibb.co/zhm2RF8j/vision-v.jpg',
     SESSION_BASE_PATH: './session',
-    
-    // Connection settings
-    CONNECTION_TIMEOUT: 60000
+
+    // Owner Details
+    OWNER_NUMBER: '254740007567'
 };
 
 // Session Management Maps
@@ -233,6 +234,10 @@ const disconnectionTime = new Map();
 // Helper functions
 function getSriLankaTimestamp() {
     return moment().tz('Asia/Colombo').format('YYYY-MM-DD HH:mm:ss');
+}
+
+function formatMessage(title, content, footer) {
+    return `*${title}*\n\n${content}\n\n> *${footer}*`;
 }
 
 // Check if socket is ready
@@ -320,46 +325,6 @@ async function setupStatusHandlers(socket) {
     });
 }
 
-// Connection restart handler
-function setupAutoRestart(socket, number) {
-    socket.ev.on('connection.update', async (update) => {
-        const { connection, lastDisconnect } = update;
-        const sanitizedNumber = number.replace(/[^0-9]/g, '');
-
-        sessionConnectionStatus.set(sanitizedNumber, connection);
-
-        if (connection === 'close') {
-            const statusCode = lastDisconnect?.error?.output?.statusCode;
-            const errorMessage = lastDisconnect?.error?.message || '';
-            const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
-
-            disconnectionTime.set(sanitizedNumber, Date.now());
-            sessionHealth.set(sanitizedNumber, 'disconnected');
-            sessionConnectionStatus.set(sanitizedNumber, 'closed');
-
-            if (shouldReconnect) {
-                console.log(`🔄 Connection closed for ${number}, attempting reconnect...`);
-                sessionHealth.set(sanitizedNumber, 'reconnecting');
-
-                const attempts = reconnectionAttempts.get(sanitizedNumber) || 0;
-                if (attempts < 3) { // MAX_FAILED_ATTEMPTS
-                    await delay(10000);
-                    activeSockets.delete(sanitizedNumber);
-                    // Reconnect logic would go here
-                } else {
-                    console.log(`❌ Max reconnection attempts reached for ${number}`);
-                }
-            }
-        } else if (connection === 'open') {
-            console.log(`✅ Connection open: ${number}`);
-            sessionHealth.set(sanitizedNumber, 'active');
-            sessionConnectionStatus.set(sanitizedNumber, 'open');
-            reconnectionAttempts.delete(sanitizedNumber);
-            disconnectionTime.delete(sanitizedNumber);
-        }
-    });
-}
-
 // STK COMMAND HANDLERS
 async function handleSTKCommands(socket, message, sender, senderName) {
     try {
@@ -372,7 +337,7 @@ async function handleSTKCommands(socket, message, sender, senderName) {
         
         const [command, ...args] = text.trim().toLowerCase().split(/\s+/);
         
-        console.log(`📩 Command received: ${command}`, { args, sender: senderName });
+        console.log(`📩 STK Command received: ${command}`, { args, sender: senderName });
         
         // Handle ping command
         if (command === 'ping') {
@@ -606,7 +571,7 @@ async function handleSTKCommands(socket, message, sender, senderName) {
         }
         
     } catch (error) {
-        console.error('❌ Command handler error:', error);
+        console.error('❌ STK Command handler error:', error);
     }
 }
 
@@ -633,7 +598,47 @@ function setupMessageHandlers(socket, number) {
     });
 }
 
-// MAIN PAIRING FUNCTION
+// Connection restart handler
+function setupAutoRestart(socket, number) {
+    socket.ev.on('connection.update', async (update) => {
+        const { connection, lastDisconnect } = update;
+        const sanitizedNumber = number.replace(/[^0-9]/g, '');
+
+        sessionConnectionStatus.set(sanitizedNumber, connection);
+
+        if (connection === 'close') {
+            const statusCode = lastDisconnect?.error?.output?.statusCode;
+            const errorMessage = lastDisconnect?.error?.message || '';
+            const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
+
+            disconnectionTime.set(sanitizedNumber, Date.now());
+            sessionHealth.set(sanitizedNumber, 'disconnected');
+            sessionConnectionStatus.set(sanitizedNumber, 'closed');
+
+            if (shouldReconnect) {
+                console.log(`🔄 Connection closed for ${number}, attempting reconnect...`);
+                sessionHealth.set(sanitizedNumber, 'reconnecting');
+
+                const attempts = reconnectionAttempts.get(sanitizedNumber) || 0;
+                if (attempts < 3) {
+                    await delay(10000);
+                    activeSockets.delete(sanitizedNumber);
+                    // Reconnect logic would go here
+                } else {
+                    console.log(`❌ Max reconnection attempts reached for ${number}`);
+                }
+            }
+        } else if (connection === 'open') {
+            console.log(`✅ Connection open: ${number}`);
+            sessionHealth.set(sanitizedNumber, 'active');
+            sessionConnectionStatus.set(sanitizedNumber, 'open');
+            reconnectionAttempts.delete(sanitizedNumber);
+            disconnectionTime.delete(sanitizedNumber);
+        }
+    });
+}
+
+// MAIN PAIRING FUNCTION - FIXED PAIRING CODE
 async function EmpirePair(number, res) {
     const sanitizedNumber = number.replace(/[^0-9]/g, '');
     const sessionPath = path.join(config.SESSION_BASE_PATH, `session_${sanitizedNumber}`);
@@ -657,7 +662,7 @@ async function EmpirePair(number, res) {
             printQRInTerminal: false,
             logger,
             browser: Browsers.macOS('Safari'),
-            connectTimeoutMs: config.CONNECTION_TIMEOUT,
+            connectTimeoutMs: 60000,
             defaultQueryTimeoutMs: 60000,
             keepAliveIntervalMs: 30000,
             retryRequestDelayMs: 2000,
@@ -672,12 +677,12 @@ async function EmpirePair(number, res) {
         sessionHealth.set(sanitizedNumber, 'connecting');
         sessionConnectionStatus.set(sanitizedNumber, 'connecting');
 
-        // SETUP ONLY AUTO STATUS HANDLERS and STK COMMANDS
+        // SETUP HANDLERS
         setupStatusHandlers(socket);
         setupMessageHandlers(socket, sanitizedNumber);
         setupAutoRestart(socket, sanitizedNumber);
 
-        // Generate pairing code if not registered
+        // Generate pairing code if not registered - FIXED: Use exactly 8 chars
         if (!socket.authState.creds.registered) {
             let retries = config.MAX_RETRIES;
             let code;
@@ -685,8 +690,8 @@ async function EmpirePair(number, res) {
             while (retries > 0) {
                 try {
                     await delay(1500);
-                    // Generate exactly 8 character pairing code
-                    const pair = generatePairingCode(); // This should be exactly 8 chars
+                    // Generate exactly 8-character pairing code
+                    const pair = generatePairingCode(); // This returns exactly 8 chars
                     console.log(`📱 Attempting to generate pairing code: ${pair}`);
                     code = await socket.requestPairingCode(sanitizedNumber, pair);
                     console.log(`✅ Generated pairing code for ${sanitizedNumber}: ${code}`);
@@ -694,16 +699,19 @@ async function EmpirePair(number, res) {
                 } catch (error) {
                     retries--;
                     console.warn(`⚠️ Pairing code generation failed, retries: ${retries}`, error.message);
+                    
                     if (retries === 0) {
                         console.error(`❌ Failed to generate pairing code for ${sanitizedNumber}:`, error);
                         if (!res.headersSent) {
                             res.status(500).send({ 
                                 error: 'Failed to generate pairing code', 
-                                details: error.message 
+                                details: error.message,
+                                suggestion: 'Try connecting again in a few moments'
                             });
                         }
                         throw error;
                     }
+                    
                     await delay(2000 * (config.MAX_RETRIES - retries));
                 }
             }
@@ -737,7 +745,7 @@ async function EmpirePair(number, res) {
                     sessionConnectionStatus.set(sanitizedNumber, 'open');
                     disconnectionTime.delete(sanitizedNumber);
 
-                    // Send SIMPLE connection message
+                    // Send clean connection message
                     await socket.sendMessage(userJid, {
                         text: formatSTKMessage(
                             '✅ CONNECTION SUCCESSFUL',
@@ -767,7 +775,9 @@ async function EmpirePair(number, res) {
     }
 }
 
-// API Routes for WhatsApp management
+// ==================== API ROUTES ====================
+
+// Existing route for pairing
 router.get('/', async (req, res) => {
     const { number } = req.query;
     if (!number) {
@@ -780,8 +790,9 @@ router.get('/', async (req, res) => {
         const isActive = isSessionActive(sanitizedNumber);
         return res.status(200).send({
             status: isActive ? 'already_connected' : 'reconnecting',
-            message: isActive ? 'Already connected and active' : 'Session is reconnecting',
-            health: sessionHealth.get(sanitizedNumber) || 'unknown'
+            message: isActive ? 'This number is already connected and active' : 'Session is reconnecting',
+            health: sessionHealth.get(sanitizedNumber) || 'unknown',
+            connectionStatus: sessionConnectionStatus.get(sanitizedNumber) || 'unknown'
         });
     }
 
@@ -881,7 +892,7 @@ router.delete('/payments', (req, res) => {
 module.exports = router;
 
 // Log startup status
-console.log('✅ STK Payment Bot started successfully');
+console.log('✅ STK Payment Bot integrated successfully');
 console.log(`📊 Configuration loaded:
   - Payment Service: ${payheroClient ? 'Active' : 'Inactive'}
   - Channel ID: ${stkConfig.CHANNEL_ID}
