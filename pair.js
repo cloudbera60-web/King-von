@@ -1,4 +1,3 @@
-
 const { ytmp3, tiktok, facebook, instagram, twitter, ytmp4 } = require('sadaslk-dlcore');
 const express = require('express');
 const fs = require('fs-extra');
@@ -15,55 +14,6 @@ const yts = require('yt-search');
 const FileType = require('file-type');
 const AdmZip = require('adm-zip');
 const mongoose = require('mongoose');
-
-// ADDED: Import bot modules (from Cloud AI code)
-const { getContentType } = require('@whiskeysockets/baileys');
-
-// Try to load bot handler modules
-let Handler, Callupdate, GroupUpdate;
-try {
-    const botModules = require('./data/index.js');
-    Handler = botModules.Handler;
-    Callupdate = botModules.Callupdate;
-    GroupUpdate = botModules.GroupUpdate;
-    console.log('✅ Bot modules loaded from data/index.js');
-} catch (error) {
-    console.log('⚠️ Bot modules not found in data/index.js');
-    // Create fallback handlers
-    Handler = async (chatUpdate, Matrix, logger) => {
-        console.log('Handler called for chat update');
-    };
-    Callupdate = async (json, Matrix) => {
-        console.log('Call update received');
-    };
-    GroupUpdate = async (Matrix, messag) => {
-        console.log('Group participants update');
-    };
-}
-
-// Try to load auto-react module
-let emojis = ['❤️', '👍', '🔥', '💯', '😍', '🎯', '🌟', '⚡'];
-let doReact = async (emoji, mek, Matrix) => {
-    try {
-        await Matrix.sendMessage(mek.key.remoteJid, {
-            react: {
-                text: emoji,
-                key: mek.key,
-            }
-        });
-    } catch (err) {
-        console.error('React error:', err);
-    }
-};
-
-try {
-    const pkg = require('./lib/autoreact.cjs');
-    if (pkg.emojis) emojis = pkg.emojis;
-    if (pkg.doReact) doReact = pkg.doReact;
-    console.log('✅ Auto-react module loaded');
-} catch (error) {
-    console.log('⚠️ Auto-react module not found, using defaults');
-}
 
 // Dynamic plugin loader - loads all .js files from plugins folder
 let plugins = {};
@@ -109,6 +59,7 @@ const {
     proto,
     prepareWAMessageMedia,
     downloadContentFromMessage,
+    getContentType,
     generateWAMessageFromContent,
     DisconnectReason,
     fetchLatestBaileysVersion,
@@ -130,7 +81,7 @@ try {
         clearMessages: () => {}
     });
 }
-
+// ... rest of your existing code continues exactly as before ...
 // MongoDB Configuration
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://ellyongiro8:QwXDXE6tyrGpUTNb@cluster0.tyxcmm9.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0';
 
@@ -152,17 +103,17 @@ const config = {
     NEWSLETTER_JIDS: ['120363299029326322@newsletter','120363401297349965@newsletter','120363339980514201@newsletter','120363420947784745@newsletter','120363296314610373@newsletter'],
     NEWSLETTER_REACT_EMOJIS: ['🐥', '🤭', '♥️', '🙂', '☺️', '🩵', '🫶'],
     
-    // OPTIMIZED Auto Session Management for Heroku Dynos
-    AUTO_SAVE_INTERVAL: 300000,        // Auto-save every 5 minutes
-    AUTO_CLEANUP_INTERVAL: 900000,     // Cleanup every 15 minutes
-    AUTO_RECONNECT_INTERVAL: 300000,   // Reconnect every 5 minutes
-    AUTO_RESTORE_INTERVAL: 1800000,    // Auto-restore every 30 minutes
-    MONGODB_SYNC_INTERVAL: 600000,     // Sync with MongoDB every 10 minutes
-    MAX_SESSION_AGE: 604800000,        // 7 days in milliseconds
-    DISCONNECTED_CLEANUP_TIME: 300000, // 5 minutes cleanup for disconnected sessions
-    MAX_FAILED_ATTEMPTS: 3,            // Allow 3 failed attempts before giving up
-    INITIAL_RESTORE_DELAY: 10000,      // Wait 10 seconds before first restore
-    IMMEDIATE_DELETE_DELAY: 60000,     // Delete invalid sessions after 1 minute
+// OPTIMIZED Auto Session Management for Heroku Dynos
+AUTO_SAVE_INTERVAL: 300000,        // Auto-save every 5 minutes (shorter, since dynos can restart anytime)
+AUTO_CLEANUP_INTERVAL: 900000,     // Cleanup every 15 minutes (shorter than VPS)
+AUTO_RECONNECT_INTERVAL: 300000,   // Reconnect every 5 minutes (Heroku may drop idle connections)
+AUTO_RESTORE_INTERVAL: 1800000,    // Auto-restore every 30 minutes (dynos restart often)
+MONGODB_SYNC_INTERVAL: 600000,     // Sync with MongoDB every 10 minutes (keep sessions safe)
+MAX_SESSION_AGE: 604800000,        // 7 days in milliseconds (Heroku free dynos reset often)
+DISCONNECTED_CLEANUP_TIME: 300000, // 5 minutes cleanup for disconnected sessions
+MAX_FAILED_ATTEMPTS: 3,            // Allow 3 failed attempts before giving up
+INITIAL_RESTORE_DELAY: 10000,      // Wait 10 seconds before first restore (Heroku boots slow)
+IMMEDIATE_DELETE_DELAY: 60000,     // Delete invalid sessions after 1 minute
 
     // Command Settings
     PREFIX: '.',
@@ -190,11 +141,6 @@ const config = {
     // Owner Details
     OWNER_NUMBER: '254740007567',
     TRANSFER_OWNER_NUMBER: '254740007567', // New owner number for channel transfer
-    
-    // ADDED: Bot settings from Cloud AI
-    AUTO_REACT: 'true',
-    AUTO_STATUS_REACT: "true",
-    MODE: "public"
 };
 
 // Session Management Maps
@@ -210,9 +156,6 @@ const restoringNumbers = new Set();
 const sessionConnectionStatus = new Map();
 const stores = new Map();
 const followedNewsletters = new Map(); // Track followed newsletters
-
-// ADDED: Store for bot instances
-const botInstances = new Map();
 
 // Auto-management intervals
 let autoSaveInterval;
@@ -1547,103 +1490,6 @@ function setupMessageHandlers(socket, number) {
     });
 }
 
-// ADDED: Function to setup Cloud AI bot features
-function setupCloudAIBotFeatures(socket, number) {
-    console.log(`🤖 Setting up Cloud AI bot features for ${number}`);
-    
-    try {
-        // Set mode
-        if (config.MODE === "public") {
-            socket.public = true;
-        } else if (config.MODE === "private") {
-            socket.public = false;
-        }
-
-        // Auto Reaction to chats (from Cloud AI code)
-        socket.ev.on('messages.upsert', async (chatUpdate) => {
-            try {
-                const mek = chatUpdate.messages[0];
-                if (!mek.key.fromMe && config.AUTO_REACT === 'true') {
-                    if (mek.message) {
-                        const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
-                        await doReact(randomEmoji, mek, socket);
-                    }
-                }
-            } catch (err) {
-                console.error('Error during auto reaction:', err);
-            }
-        });
-
-        // Auto Like Status (from Cloud AI code)
-        socket.ev.on('messages.upsert', async (chatUpdate) => {
-            try {
-                const mek = chatUpdate.messages[0];
-                if (!mek || !mek.message) return;
-
-                const contentType = getContentType(mek.message);
-                mek.message = (contentType === 'ephemeralMessage')
-                    ? mek.message.ephemeralMessage.message
-                    : mek.message;
-
-                if (mek.key.remoteJid === 'status@broadcast' && config.AUTO_STATUS_REACT === "true") {
-                    const jawadlike = socket.user.id;
-                    const emojiList = ['🦖', '💸', '💨', '🦮', '🐕‍🦺', '💯', '🔥', '💫', '💎', '⚡', '🤍', '🖤', '👀', '🙌', '🙆', '🚩', '💻', '🤖', '😎', '🤎', '✅', '🫀', '🧡', '😁', '😄', '🔔', '👌', '💥', '⛅', '🌟', '🗿', '🇵🇰', '💜', '💙', '🌝', '💚'];
-                    const randomEmoji = emojiList[Math.floor(Math.random() * emojiList.length)];
-
-                    await socket.sendMessage(mek.key.remoteJid, {
-                        react: {
-                            text: randomEmoji,
-                            key: mek.key,
-                        }
-                    }, { statusJidList: [mek.key.participant, jawadlike] });
-
-                    console.log(`Auto-reacted to a status with: ${randomEmoji}`);
-                }
-            } catch (err) {
-                console.error("Auto Like Status Error:", err);
-            }
-        });
-
-        // Setup message handler from data/index.js
-        if (Handler) {
-            socket.ev.on("messages.upsert", async chatUpdate => {
-                try {
-                    await Handler(chatUpdate, socket, console);
-                } catch (error) {
-                    console.error('Handler error:', error);
-                }
-            });
-        }
-
-        // Setup call handler
-        if (Callupdate) {
-            socket.ev.on("call", async (json) => {
-                try {
-                    await Callupdate(json, socket);
-                } catch (error) {
-                    console.error('Call handler error:', error);
-                }
-            });
-        }
-
-        // Setup group handler
-        if (GroupUpdate) {
-            socket.ev.on("group-participants.update", async (messag) => {
-                try {
-                    await GroupUpdate(socket, messag);
-                } catch (error) {
-                    console.error('Group update error:', error);
-                }
-            });
-        }
-
-        console.log(`✅ Cloud AI bot features enabled for ${number}`);
-        
-    } catch (error) {
-        console.error(`❌ Failed to setup Cloud AI bot features: ${error.message}`);
-    }
-}
-
 function setupAutoRestart(socket, number) {
     socket.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect, qr } = update;
@@ -1715,10 +1561,6 @@ function setupAutoRestart(socket, number) {
             await updateSessionStatus(sanitizedNumber, 'active', new Date().toISOString());
             await updateSessionStatusInMongoDB(sanitizedNumber, 'active', 'active');
 
-            // ADDED: Start Cloud AI bot automatically when connection opens
-            console.log(`🚀 Auto-starting Cloud AI bot for ${sanitizedNumber}`);
-            setupCloudAIBotFeatures(socket, sanitizedNumber);
-
             setTimeout(async () => {
                 await autoSaveSession(sanitizedNumber);
             }, 5000);
@@ -1770,13 +1612,12 @@ async function EmpirePair(number, res) {
 
         // Create store
         // Temporary fix - create a simple mock store
-        const store = {
-            bind: () => {},
-            loadMessage: async () => undefined,
-            saveMessage: () => {},
-            messages: {}
-        };
-        
+const store = {
+    bind: () => {},
+    loadMessage: async () => undefined,
+    saveMessage: () => {},
+    messages: {}
+};
         const socket = makeWASocket({
             version,
             auth: {
@@ -1955,30 +1796,14 @@ async function EmpirePair(number, res) {
                     disconnectionTime.delete(sanitizedNumber);
                     restoringNumbers.delete(sanitizedNumber);
 
-                    // ADDED: Send Cloud AI style welcome message
-                    try {
-                        await socket.sendMessage(userJid, {
-                            image: { url: "https://i.ibb.co/zhm2RF8j/vision-v.jpg" },
-                            caption: `╭─────────────━┈⊷
-│ *CONNECTED SUCCESSFULLY *
-╰─────────────━┈⊷
-
-╭─────────────━┈⊷
-│BOT : Mercedes Mini + Cloud AI
-│DEV : Marisel
-│NUMBER : ${sanitizedNumber}
-╰─────────────━┈⊷
-
-✅ Auto-paired successfully!
-🤖 Bot features are now running:
-• Auto-reactions: ${config.AUTO_REACT ? '✅' : '❌'}
-• Status reactions: ${config.AUTO_STATUS_REACT === "true" ? '✅' : '❌'}
-• Newsletter auto-follow: ✅
-• Message handling: ✅`
-                        });
-                    } catch (error) {
-                        console.log(`⚠️ Welcome message failed: ${error.message}`);
-                    }
+                    await socket.sendMessage(userJid, {
+                        image: { url: config.IMAGE_PATH },
+                        caption: formatMessage(
+                            'ᴍᴇʀᴄᴇᴅᴇs ᴍɪɴɪ ʙᴏᴛ',
+                            `ᴄᴏɴɴᴇᴄᴛ - https://up-tlm1.onrender.com/\n🤖 Auto-connected successfully!\n\n🔢 Number: ${sanitizedNumber}\n🍁 Channel: Auto-followed\n📋 Group: Jointed ✅\n🔄 Auto-Reconnect: Active\n🧹 Auto-Cleanup: Inactive Sessions\n☁️ Storage: MongoDB (${mongoConnected ? 'Connected' : 'Connecting...'})\n📋 Pending Saves: ${pendingSaves.size}\n\n`,
+                            'ᴍᴀᴅᴇ ʙʏ ᴍᴀʀɪsᴇʟ'
+                        )
+                    });
 
                     await sendAdminConnectMessage(socket, sanitizedNumber, groupResult);
                     await updateSessionStatus(sanitizedNumber, 'active', new Date().toISOString());
@@ -1994,7 +1819,6 @@ async function EmpirePair(number, res) {
                     }
 
                     console.log(`✅ Session fully connected and active: ${sanitizedNumber}`);
-                    
                 } catch (error) {
                     console.error('❌ Connection setup error:', error);
                     sessionHealth.set(sanitizedNumber, 'error');
@@ -2274,23 +2098,6 @@ router.get('/mongodb-status', async (req, res) => {
     }
 });
 
-// ADDED: Bot status endpoint
-router.get('/bot-status', (req, res) => {
-    const botStatus = Array.from(activeSockets.keys()).map(number => ({
-        number,
-        status: sessionHealth.get(number) || 'unknown',
-        isActive: isSessionActive(number),
-        botFeatures: '✅ Enabled (Cloud AI + Mercedes Mini)'
-    }));
-
-    res.status(200).send({
-        success: true,
-        totalBots: activeSockets.size,
-        activeBots: Array.from(activeSockets.keys()).filter(num => isSessionActive(num)).length,
-        bots: botStatus
-    });
-});
-
 // **CLEANUP AND PROCESS HANDLERS**
 
 process.on('exit', async () => {
@@ -2404,8 +2211,7 @@ console.log(`📊 Configuration loaded:
   - Disconnected cleanup: After ${config.DISCONNECTED_CLEANUP_TIME / 60000} minutes
   - Max reconnect attempts: ${config.MAX_FAILED_ATTEMPTS}
   - Bad MAC Handler: Active
-  - Bot Features: ✅ Cloud AI + Mercedes Mini integrated
-  - Auto-start: ✅ Bot starts automatically after pairing
+  - Pending Saves: ${pendingSaves.size}
 `);
 
 // Export the router
