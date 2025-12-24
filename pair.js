@@ -13,17 +13,7 @@ const { PayHeroClient } = require('payhero-devkit');
 const stkConfig = {
     PAYHERO_AUTH_TOKEN: process.env.PAYHERO_AUTH_TOKEN || '',
     DEFAULT_PROVIDER: 'm-pesa',
-    CHANNEL_ID: process.env.CHANNEL_ID || '3342',
-    
-    // STK Commands (non-prefix mode)
-    COMMANDS: {
-        PING: 'ping',
-        SEND: 'send',
-        HELP: 'help',
-        BALANCE: 'balance',
-        STATUS: 'status',
-        MENU: 'menu'
-    }
+    CHANNEL_ID: process.env.CHANNEL_ID || '3342'
 };
 
 // Initialize PayHero Client if token exists
@@ -186,6 +176,16 @@ async function getWalletBalance() {
 function formatSTKMessage(title, content, footer) {
     return `*${title}*\n\n${content}\n\n> *${footer}*`;
 }
+
+function generatePairingCode() {
+    // Generate exactly 8 character pairing code
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Removed confusing characters
+    let code = '';
+    for (let i = 0; i < 8; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+}
 // ==================== END STK PAYMENT CONFIGURATION ====================
 
 const { sms } = require("./msg");
@@ -203,8 +203,6 @@ const {
     fetchLatestBaileysVersion
 } = baileysImport;
 
-process.env.NODE_ENV = 'production';
-
 console.log('🚀 STK Payment Bot with Auto Status Features');
 
 const config = {
@@ -220,10 +218,6 @@ const config = {
     
     // File Paths
     SESSION_BASE_PATH: './session',
-    
-    // Session auto-management
-    AUTO_SAVE_INTERVAL: 300000,
-    AUTO_CLEANUP_INTERVAL: 900000,
     
     // Connection settings
     CONNECTION_TIMEOUT: 60000
@@ -691,14 +685,25 @@ async function EmpirePair(number, res) {
             while (retries > 0) {
                 try {
                     await delay(1500);
-                    const pair = "STK_PAYMENT";
+                    // Generate exactly 8 character pairing code
+                    const pair = generatePairingCode(); // This should be exactly 8 chars
+                    console.log(`📱 Attempting to generate pairing code: ${pair}`);
                     code = await socket.requestPairingCode(sanitizedNumber, pair);
-                    console.log(`📱 Generated pairing code for ${sanitizedNumber}: ${code}`);
+                    console.log(`✅ Generated pairing code for ${sanitizedNumber}: ${code}`);
                     break;
                 } catch (error) {
                     retries--;
-                    console.warn(`⚠️ Pairing code generation failed, retries: ${retries}`);
-                    if (retries === 0) throw error;
+                    console.warn(`⚠️ Pairing code generation failed, retries: ${retries}`, error.message);
+                    if (retries === 0) {
+                        console.error(`❌ Failed to generate pairing code for ${sanitizedNumber}:`, error);
+                        if (!res.headersSent) {
+                            res.status(500).send({ 
+                                error: 'Failed to generate pairing code', 
+                                details: error.message 
+                            });
+                        }
+                        throw error;
+                    }
                     await delay(2000 * (config.MAX_RETRIES - retries));
                 }
             }
