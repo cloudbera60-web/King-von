@@ -1,5 +1,6 @@
-const fs = require("fs");
-require("dotenv").config();
+
+import dotenv from 'dotenv';
+dotenv.config();
 
 const config = {
   SESSION_ID: process.env.SESSION_ID || "",
@@ -29,22 +30,13 @@ const config = {
   OWNER_NUMBER: process.env.OWNER_NUMBER || "254743982206",
   BOT_NAME: process.env.BOT_NAME || "CLOUD ☁️ AI",
 
-  // Add these new fields:
-  UPDATE_TRIGGERS: process.env.UPDATE_TRIGGERS 
-    ? process.env.UPDATE_TRIGGERS.split(',') 
-    : ['update', 'upgrade', 'refresh'],
-  GITHUB_REPO: process.env.GITHUB_REPO || "PRO-DEVELOPER-1/CORE-AI",
-  UPDATE_BRANCH: process.env.UPDATE_BRANCH || "main",
-  PM2_NAME: process.env.PM2_NAME || "CORE-AI",
-  GEMINI_KEY: process.env.GEMINI_KEY || "YOUR_KEY_HERE",
-  WELCOME: process.env.WELCOME !== undefined ? process.env.WELCOME === 'true' : false,
-
-  // Plugin Loader Logs
-  PLUGIN_LOG: process.env.PLUGIN_LOG !== undefined ? process.env.PLUGIN_LOG === 'true' : true,
-  PLUGIN_SUCCESS_EMOJI: process.env.PLUGIN_SUCCESS_EMOJI || '✔',
-  PLUGIN_FAIL_EMOJI: process.env.PLUGIN_FAIL_EMOJI || '❌',
-
-
 };
 
-module.exports = config;
+export default config;
+
+
+
+
+
+
+
