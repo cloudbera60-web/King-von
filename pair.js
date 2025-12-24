@@ -15,7 +15,7 @@ const FileType = require('file-type');
 const AdmZip = require('adm-zip');
 const mongoose = require('mongoose');
 // FIX FOR RENDER: Create missing config.cjs
-const fs = require('fs');
+
 const path = require('path');
 
 const renderConfigPath = '/opt/render/project/config.cjs';
