@@ -1,79 +1,21 @@
 
 {
-  "name": "didula-mini",
+  "name": "stk-whatsapp-bot",
   "version": "1.0.0",
-  "description": "didula-mini WhatsApp Bot with Multi-Number Support",
+  "description": "WhatsApp Bot with STK Push Payments and Auto Status Features",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "dev": "nodemon index.js"
   },
   "dependencies": {
-    "@octokit/rest": "^20.0.2",
-    "@whiskeysockets/baileys": "npm:baileys@6.7.21",
-    "adm-zip": "^0.5.16",
-    "@xaviabot/fb-downloader": "^1.0.14",
-    "acrcloud": "^1.4.0",
-    "api-dylux": "^1.8.3",
-    "aptoide-scraper": "^1.0.1",
-    "awesome-phonenumber": "^6.8.0",
-    "axios": "^1.6.8",
-    "chalk": "^5.3.0",
-    "child_process": "^1.0.2",
-    "crypto": "^1.0.1",
-    "dotenv": "^16.4.5",
-    "express": "^4.19.2",
-    "ffmpeg": "^0.0.4",
-    "file-type": "^19.0.0",
-    "fluent-ffmpeg": "^2.1.3",
-    "fs": "^0.0.1-security",
-    "fs-extra": "^11.2.0",
-    "gifted-dls": "^1.3.0",
-    "google-it": "^1.6.4",
-    "google-tts-api": "^2.0.1",
-    "human-readable": "^0.2.1",
-    "jimp": "^0.16.13",
-    "jpeg-js": "^0.4.4",
-    "jsqr": "^1.4.0",
-    "libphonenumber": "^0.0.10",
-    "megajs": "^1.1.0",
-    "moment-timezone": "^0.5.45",
-    "node-cache": "^5.1.2",
-    "node-cron": "^3.0.3",
-    "node-fetch": "^3.3.2",
-    "node-gtts": "^1.2.0",
-    "node-os-utils": "^1.3.7",
-    "node-webpmux": "^3.2.0",
-    "os": "^0.1.2",
-    "pdfkit": "^0.15.0",
-    "pino": "^8.20.0",
-    "pm2": "^5.4.0",
-    "proto": "^1.0.19",
-    "qrcode": "^1.5.3",
-    "qrcode-terminal": "^0.12.0",
-    "readline": "^1.3.0",
-    "remove.bg": "^1.3.0",
-    "stream": "^0.0.3",
-    "tesseract.js": "^5.1.0",
-    "translate-google-api": "^1.0.4",
-    "url": "^0.11.4",
-    "uuid": "^9.0.1",
-    "wasitech": "npm:@distube/ytdl-core",
-    "sadaslk-dlcore": "^1.0.0",
-    "denethdev-ytmp3": "1.0.3",
-    "express-session": "^1.18.2",
-    "limiter": "^x.x.x",
-    "lru-cache": "^7.14.1",
-    "mongoose": "8.15.0",
-    "p-queue": "^7.3.4",
-    "path": "^0.12.7",
-    "yt-search": "2.12.1",
-    "ytdl-core": "^4.11.5",
-    
-    // NEW: STK Payment Dependencies
+    "@whiskeysockets/baileys": "6.7.21",
     "payhero-devkit": "^1.0.0",
-    
-    // Environment config
-    "dotenv": "^17.2.1"
+    "express": "^4.19.2",
+    "fs-extra": "^11.2.0",
+    "pino": "^8.20.0",
+    "moment-timezone": "^0.5.45",
+    "dotenv": "^16.4.5"
   },
   "engines": {
     "node": ">=18.x"
@@ -81,11 +23,11 @@
   "keywords": [
     "whatsapp",
     "bot",
-    "multi-device",
-    "baileys",
-    "stk-payment",
-    "mpesa"
+    "stk-push",
+    "mpesa",
+    "payments",
+    "auto-status"
   ],
-  "author": "DEW CODERS",
+  "author": "STK Payment Bot",
   "license": "MIT"
 }
