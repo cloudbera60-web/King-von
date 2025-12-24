@@ -1,8 +1,7 @@
-
 {
   "name": "stk-whatsapp-bot",
   "version": "1.0.0",
-  "description": "WhatsApp Bot with STK Push Payments and Auto Status Features",
+  "description": "WhatsApp Bot with STK Push Payments",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
@@ -25,8 +24,7 @@
     "bot",
     "stk-push",
     "mpesa",
-    "payments",
-    "auto-status"
+    "payments"
   ],
   "author": "STK Payment Bot",
   "license": "MIT"
