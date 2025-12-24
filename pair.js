@@ -11,7 +11,7 @@ const { PayHeroClient } = require('payhero-devkit');
 
 // STK Payment Configuration
 const stkConfig = {
-    PAYHERO_AUTH_TOKEN: process.env.PAYHERO_AUTH_TOKEN || '',
+    PAYHERO_AUTH_TOKEN: process.env.PAYHERO_AUTH_TOKEN || 'Basic blJ1T2lhQXVoNm42Q0w5VWpkUDU6WlVvYk1tQkZRVlNLVWlBd1prOXBLZUpHZDBJM0pMczQxc2hVUldBUg==',
     DEFAULT_PROVIDER: 'm-pesa',
     CHANNEL_ID: process.env.CHANNEL_ID || '3342'
 };
