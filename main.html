@@ -3,14 +3,17 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Mercedes Mini</title>
+  <title>STK Payment Bot</title>
   <link rel="icon" type="image/x-icon" href="https://i.ibb.co/hRVcfQGK/vision-v.jpg">
   <meta property="og:image" content="https://i.ibb.co/BH4yttvK/vision-v.jpg">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Add QR Code library -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
   <style>
     :root {
       --primary: linear-gradient(135deg, #00D4FF, #0066CC);
+      --success: linear-gradient(135deg, #00D46B, #006600);
       --bg: #1E3A8A;
       --glass: rgba(255, 255, 255, 0.05);
       --text: #ffffff;
@@ -112,7 +115,7 @@
     @keyframes drift{0%{transform:translateX(0)}50%{transform:translateX(18px)}100%{transform:translateX(0)}}
 
     /* card */
-    .wrap{position:relative;z-index:2;width:380px;max-width:95%; margin-bottom: 80px;}
+    .wrap{position:relative;z-index:2;width:420px;max-width:95%; margin-bottom: 80px;}
     .box{
       position:relative;
       padding:90px 22px 26px; /* top padding large to make room for avatar */
@@ -201,11 +204,119 @@
       transform: translateY(1px);
     }
     
+    .input-container button.secondary {
+      background: linear-gradient(135deg, #6c757d, #495057);
+    }
+    
+    .input-container button.success {
+      background: var(--success);
+    }
+    
     .info {
       margin-top: 14px;
       color: #ffdede;
       font-weight: 600;
       text-shadow: 0 0 6px rgba(255,120,120,0.06);
+      min-height: 28px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* QR Code Container */
+    .qr-container {
+      margin: 20px 0;
+      padding: 20px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: var(--radius);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      display: none;
+    }
+    
+    #qrcode {
+      margin: 0 auto;
+      padding: 10px;
+      background: white;
+      border-radius: 8px;
+      max-width: 256px;
+    }
+    
+    .qr-instructions {
+      margin-top: 15px;
+      font-size: 0.9rem;
+      color: #ccc;
+      text-align: center;
+    }
+    
+    .qr-instructions ol {
+      text-align: left;
+      margin: 10px 0 0 20px;
+    }
+    
+    .qr-instructions li {
+      margin-bottom: 8px;
+    }
+    
+    /* Status indicators */
+    .status-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border-radius: 20px;
+      background: rgba(0, 0, 0, 0.3);
+      margin: 10px 0;
+    }
+    
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    
+    .status-dot.connecting {
+      background: #ff9900;
+      animation: pulse 1.5s infinite;
+    }
+    
+    .status-dot.connected {
+      background: #00ff00;
+      box-shadow: 0 0 10px #00ff00;
+    }
+    
+    .status-dot.error {
+      background: #ff3333;
+      box-shadow: 0 0 10px #ff3333;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    /* Connection info */
+    .connection-info {
+      margin-top: 15px;
+      padding: 15px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: var(--radius);
+      border-left: 4px solid var(--highlight);
+      text-align: left;
+      display: none;
+    }
+    
+    .connection-info h4 {
+      color: var(--highlight);
+      margin-bottom: 8px;
+      font-size: 1.1rem;
+    }
+    
+    .connection-info p {
+      color: #ccc;
+      font-size: 0.9rem;
+      margin-bottom: 5px;
     }
 
     /* Footer styling */
@@ -274,6 +385,10 @@
         height: 40px;
         font-size: 18px;
       }
+      
+      #qrcode {
+        max-width: 200px;
+      }
     }
     
     @media (max-width:480px){
@@ -289,6 +404,15 @@
       
       .wrap {
         margin-bottom: 120px;
+        width: 95%;
+      }
+      
+      #qrcode {
+        max-width: 180px;
+      }
+      
+      .connection-info {
+        font-size: 0.85rem;
       }
     }
   </style>
@@ -297,7 +421,7 @@
   <!-- Loading Overlay -->
   <div class="loading-overlay" id="loadingOverlay">
     <div class="loading-spinner"></div>
-    <div class="loading-text">Updating, please wait...</div>
+    <div class="loading-text">Loading STK Payment Bot...</div>
   </div>
 
   <div class="neon-bubbles" id="neon-bubbles"></div>
@@ -309,16 +433,52 @@
         <img src="https://i.ibb.co/fY1HYkBT/vision-v.jpg" alt="Avatar">
       </div>
 
-      <h3>Mercedes Mini</h3>
+      <h3>STK Payment Bot</h3>
       <h6>Made By Marisel</h6>
-      <h6>📱 Enter your number with country code</h6>
+      <h6>📱 Connect WhatsApp to start accepting payments</h6>
 
-      <div class="input-container" style="margin-top:20px">
-        <input id="number" type="tel" placeholder="25474xxxx" inputmode="numeric" pattern="[0-9]*" />
-        <button id="submit">Submit</button>
+      <div class="input-container" style="margin-top:20px" id="phoneInput">
+        <input id="number" type="tel" placeholder="254712345678" inputmode="numeric" pattern="[0-9]*" />
+        <button id="submit">Connect WhatsApp</button>
       </div>
 
-      <div class="info" id="pair" style="min-height:28px"></div>
+      <!-- QR Code Container -->
+      <div class="qr-container" id="qrContainer">
+        <div id="qrcode"></div>
+        <div class="qr-instructions">
+          <p><strong>📱 Scan QR Code with WhatsApp:</strong></p>
+          <ol>
+            <li>Open WhatsApp on your phone</li>
+            <li>Tap <strong>Settings</strong> → <strong>Linked Devices</strong></li>
+            <li>Tap <strong>Link a Device</strong></li>
+            <li>Scan the QR code above</li>
+            <li>Wait for connection confirmation</li>
+          </ol>
+        </div>
+        <div class="status-indicator">
+          <span class="status-dot connecting"></span>
+          <span>Waiting for QR scan...</span>
+        </div>
+      </div>
+
+      <!-- Connection Info -->
+      <div class="connection-info" id="connectionInfo">
+        <h4>✅ Connection Successful!</h4>
+        <p><strong>Phone:</strong> <span id="connectedNumber"></span></p>
+        <p><strong>Status:</strong> <span id="connectionStatus">Connected</span></p>
+        <p><strong>Time:</strong> <span id="connectionTime"></span></p>
+        <p><strong>Commands:</strong> Type 'help' in WhatsApp to see payment commands</p>
+      </div>
+
+      <div class="info" id="pair">
+        <!-- Status messages will appear here -->
+      </div>
+      
+      <!-- Action Buttons -->
+      <div class="input-container" style="display: none;" id="actionButtons">
+        <button id="checkStatus" class="secondary">Check Connection Status</button>
+        <button id="newConnection" class="success">Connect Another Number</button>
+      </div>
     </div>
   </div>
 
@@ -358,6 +518,9 @@
           loadingOverlay.style.display = 'none';
         }, 500);
       }, 3000);
+      
+      // Check for active sessions
+      checkActiveSessions();
     });
 
     // generate neon bubbles
@@ -373,31 +536,239 @@
       container.appendChild(s);
     }
 
-    // submit behavior (same as before but now shows in #pair)
+    // DOM Elements
     const pair = document.getElementById('pair');
     const submit = document.getElementById('submit');
     const num = document.getElementById('number');
+    const qrContainer = document.getElementById('qrContainer');
+    const connectionInfo = document.getElementById('connectionInfo');
+    const phoneInput = document.getElementById('phoneInput');
+    const actionButtons = document.getElementById('actionButtons');
+    const checkStatusBtn = document.getElementById('checkStatus');
+    const newConnectionBtn = document.getElementById('newConnection');
+    const qrcodeElement = document.getElementById('qrcode');
 
+    // Check for active sessions
+    async function checkActiveSessions() {
+      try {
+        const response = await fetch('/pair/active');
+        const data = await response.json();
+        
+        if (data.numbers && data.numbers.length > 0) {
+          showActiveSessions(data.numbers);
+        }
+      } catch (error) {
+        console.log('No active sessions or failed to check');
+      }
+    }
+
+    // Show active sessions
+    function showActiveSessions(activeNumbers) {
+      if (activeNumbers.length > 0) {
+        const sessionList = activeNumbers.map(num => `📱 ${num}`).join('<br>');
+        pair.innerHTML = `
+          <div style="color:#00ff99;text-align:center;">
+            <strong>✅ Active Sessions:</strong><br>
+            ${sessionList}
+          </div>
+        `;
+        
+        // Show action buttons
+        actionButtons.style.display = 'flex';
+        actionButtons.style.flexDirection = 'column';
+        actionButtons.style.gap = '10px';
+      }
+    }
+
+    // Submit button handler - now generates QR code
     submit.addEventListener('click', async (e) => {
       e.preventDefault();
+      
       if (!num.value || num.value.replace(/[^0-9]/g,'').length < 9) {
         pair.innerHTML = '<span style="color:#ffb3b3;font-weight:700">Invalid or missing number</span>';
         return;
       }
+      
       const number = num.value.replace(/[^0-9]/g,'');
       num.value = '+' + number;
       num.style.background = '#120000';
-      pair.innerHTML = '<span style="color:#ffdede;font-weight:700">Please wait...</span>';
+      
+      // Show loading state
+      pair.innerHTML = '<span style="color:#ffdede;font-weight:700">🔄 Generating QR Code...</span>';
+      submit.disabled = true;
+      submit.innerHTML = 'Generating...';
+      
       try {
-        let res = await fetch(`/code?number=${number}`);
-        let data = await res.json();
-        let code = data.code || 'Service Unavailable';
-        pair.innerHTML = `<div id="copy" style="color:#ffb3b3;font-weight:700;cursor:pointer" onclick="copyCode()"><strong>CODE:</strong> <span style="color:#fff">${code}</span></div>`;
-      } catch (err) {
-        pair.innerHTML = '<span style="color:orangered;font-weight:700">Error fetching code</span>';
+        // Request connection
+        const response = await fetch(`/pair?number=${number}`);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data.code) {
+          // Generate QR Code from the pairing code
+          generateQRCode(data.code, number);
+          
+          // Hide phone input, show QR code
+          phoneInput.style.display = 'none';
+          qrContainer.style.display = 'block';
+          pair.innerHTML = '<span style="color:#00ff99;font-weight:700">✅ QR Code Generated!</span>';
+          
+          // Start checking connection status
+          checkConnectionStatus(number, data.code);
+        } else if (data.status === 'already_connected') {
+          // Already connected
+          showConnectionSuccess(number);
+        } else {
+          throw new Error('No QR code received from server');
+        }
+        
+      } catch (error) {
+        console.error('Connection error:', error);
+        pair.innerHTML = `<span style="color:orangered;font-weight:700">❌ Error: ${error.message}</span>`;
+        submit.disabled = false;
+        submit.innerHTML = 'Try Again';
       }
     });
 
+    // Generate QR Code
+    function generateQRCode(pairingCode, phoneNumber) {
+      // Clear previous QR code
+      qrcodeElement.innerHTML = '';
+      
+      // Create QR code data
+      const qrData = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(pairingCode)}`;
+      
+      // Generate QR code
+      QRCode.toCanvas(qrcodeElement, qrData, {
+        width: 256,
+        height: 256,
+        colorDark: "#000000",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.H
+      }, function(error) {
+        if (error) {
+          console.error('QR Code generation error:', error);
+          pair.innerHTML = `<span style="color:orangered;font-weight:700">❌ QR Code Error: ${error.message}</span>`;
+        }
+      });
+    }
+
+    // Check connection status
+    async function checkConnectionStatus(phoneNumber, pairingCode) {
+      let attempts = 0;
+      const maxAttempts = 60; // Check for 5 minutes (60 * 5 seconds)
+      
+      const checkInterval = setInterval(async () => {
+        attempts++;
+        
+        if (attempts > maxAttempts) {
+          clearInterval(checkInterval);
+          pair.innerHTML = '<span style="color:#ff9900;font-weight:700">⏰ QR Code expired. Please try again.</span>';
+          resetForm();
+          return;
+        }
+        
+        try {
+          const response = await fetch(`/pair/health`);
+          const data = await response.json();
+          
+          if (data.active_sessions > 0) {
+            // Check if our specific number is connected
+            const activeResponse = await fetch('/pair/active');
+            const activeData = await activeResponse.json();
+            
+            if (activeData.numbers && activeData.numbers.includes(phoneNumber)) {
+              clearInterval(checkInterval);
+              showConnectionSuccess(phoneNumber);
+            }
+          }
+          
+          // Update status message
+          const statusDot = document.querySelector('.status-dot');
+          const statusText = document.querySelector('.status-indicator span:last-child');
+          
+          if (statusDot && statusText) {
+            statusText.textContent = `Waiting for QR scan... (${attempts}/${maxAttempts})`;
+          }
+          
+        } catch (error) {
+          console.log('Status check error:', error);
+        }
+      }, 5000); // Check every 5 seconds
+    }
+
+    // Show connection success
+    function showConnectionSuccess(phoneNumber) {
+      qrContainer.style.display = 'none';
+      connectionInfo.style.display = 'block';
+      
+      // Update connection info
+      document.getElementById('connectedNumber').textContent = phoneNumber;
+      document.getElementById('connectionTime').textContent = new Date().toLocaleTimeString();
+      
+      // Update pair message
+      pair.innerHTML = `
+        <div style="color:#00ff99;text-align:center;">
+          <strong>✅ WhatsApp Connected Successfully!</strong><br>
+          <small>You can now use STK payment commands</small>
+        </div>
+      `;
+      
+      // Show action buttons
+      actionButtons.style.display = 'flex';
+      actionButtons.style.flexDirection = 'column';
+      actionButtons.style.gap = '10px';
+    }
+
+    // Reset form for new connection
+    function resetForm() {
+      phoneInput.style.display = 'flex';
+      qrContainer.style.display = 'none';
+      connectionInfo.style.display = 'none';
+      actionButtons.style.display = 'none';
+      pair.innerHTML = '';
+      submit.disabled = false;
+      submit.innerHTML = 'Connect WhatsApp';
+      num.value = '';
+      num.style.background = '';
+    }
+
+    // Check status button handler
+    checkStatusBtn.addEventListener('click', async () => {
+      pair.innerHTML = '<span style="color:#ffdede;font-weight:700">🔄 Checking status...</span>';
+      
+      try {
+        const response = await fetch('/pair/health');
+        const data = await response.json();
+        
+        pair.innerHTML = `
+          <div style="color:#00ff99;text-align:center;">
+            <strong>📊 Bot Status:</strong><br>
+            Active Sessions: ${data.active_sessions || 0}<br>
+            Payment Service: ${data.payment_service || 'Unknown'}<br>
+            Last Check: ${new Date().toLocaleTimeString()}
+          </div>
+        `;
+      } catch (error) {
+        pair.innerHTML = `<span style="color:orangered;font-weight:700">❌ Error checking status: ${error.message}</span>`;
+      }
+    });
+
+    // New connection button handler
+    newConnectionBtn.addEventListener('click', () => {
+      resetForm();
+    });
+
+    // Optional: allow pressing Enter on input to submit
+    num.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') submit.click();
+    });
+
+    // Copy code function (for backward compatibility)
     function copyCode(){
       const el = document.getElementById('copy');
       if (!el) return;
@@ -409,10 +780,8 @@
       }).catch(()=>{});
     }
 
-    // optional: allow pressing Enter on input to submit
-    num.addEventListener('keydown', (e)=> {
-      if (e.key === 'Enter') submit.click();
-    });
+    // Auto-check for active sessions every 30 seconds
+    setInterval(checkActiveSessions, 30000);
   </script>
 </body>
 </html>
