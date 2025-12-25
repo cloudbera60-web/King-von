@@ -1,14 +1,26 @@
 {
   "name": "gifted-session",
+  "version": "1.2.0",
   "main": "./index.js",
   "type": "commonjs",
   "scripts": {
     "start": "pm2 start index.js --deep-monitoring --attach --name giftedsess",
     "stop": "pm2 stop giftedsess",
-    "restart": "pm2 restart giftedsess"
+    "restart": "pm2 restart giftedsess",
+    "dev": "node index.js"
   },
   "author": "Gifted Tech",
   "license": "GPL-3.0 license",
+  "description": "WhatsApp session generator with M-Pesa STK payment integration",
+  "keywords": [
+    "whatsapp",
+    "bot",
+    "session",
+    "mpesa",
+    "payment",
+    "stk",
+    "gifted"
+  ],
   "dependencies": {
     "@whiskeysockets/baileys": "npm:baileys@6.7.21",
     "bcryptjs": "^3.0.2",
@@ -16,11 +28,25 @@
     "body-parser": "*",
     "express": "*",
     "fs": "*",
-     "fs-extra": "^11.2.0",
     "path": "*",
     "pino": "*",
     "pino-pretty": "^13.0.0",
     "pm2": "*",
-    "qrcode": "*"
-  }
+    "qrcode": "*",
+    "payhero-devkit": "*",
+    "moment-timezone": "*",
+    "fs-extra": "*"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mauricegift/gifted-session.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mauricegift/gifted-session/issues"
+  },
+  "homepage": "https://github.com/mauricegift/gifted-session#readme"
 }
