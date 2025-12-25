@@ -1,31 +1,25 @@
 {
-  "name": "stk-whatsapp-bot",
-  "version": "1.0.0",
-  "description": "WhatsApp Bot with STK Push Payments",
-  "main": "index.js",
+  "name": "gifted-session",
+  "main": "./index.js",
+  "type": "commonjs",
   "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js"
+    "start": "pm2 start index.js --deep-monitoring --attach --name giftedsess",
+    "stop": "pm2 stop giftedsess",
+    "restart": "pm2 restart giftedsess"
   },
+  "author": "Gifted Tech",
+  "license": "GPL-3.0 license",
   "dependencies": {
-    "@whiskeysockets/baileys": "6.7.21",
-    "payhero-devkit": "^1.0.0",
-    "express": "^4.19.2",
-    "fs-extra": "^11.2.0",
-    "pino": "^8.20.0",
-    "moment-timezone": "^0.5.45",
-    "dotenv": "^16.4.5"
-  },
-  "engines": {
-    "node": ">=18.x"
-  },
-  "keywords": [
-    "whatsapp",
-    "bot",
-    "stk-push",
-    "mpesa",
-    "payments"
-  ],
-  "author": "STK Payment Bot",
-  "license": "MIT"
+    "@whiskeysockets/baileys": "npm:baileys@6.7.21",
+    "bcryptjs": "^3.0.2",
+    "gifted-btns": "*",
+    "body-parser": "*",
+    "express": "*",
+    "fs": "*",
+    "path": "*",
+    "pino": "*",
+    "pino-pretty": "^13.0.0",
+    "pm2": "*",
+    "qrcode": "*"
+  }
 }
