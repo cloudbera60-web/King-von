@@ -3,243 +3,232 @@ const {
     removeFile,
     generateRandomCode
 } = require('../gift');
-const zlib = require('zlib');
 const express = require('express');
 const fs = require('fs-extra');
 const path = require('path');
 let router = express.Router();
 const pino = require("pino");
-const { sendButtons } = require('gifted-btns');
 const {
-    default: giftedConnect,
+    default: makeWASocket,
     useMultiFileAuthState,
     delay,
     fetchLatestBaileysVersion,
     makeCacheableSignalKeyStore,
-    Browsers
+    Browsers,
+    DisconnectReason
 } = require("@whiskeysockets/baileys");
 
-// Import WhatsApp Manager
-const whatsappManager = require('../whatsapp-manager');
-
 const sessionDir = path.join(__dirname, "../session");
+
+// Simple payment command handler for demo
+function handlePaymentCommand(command, socket, sender) {
+    const responses = {
+        'menu': `📚 *GIFTED PAYMENT MENU*\n\nCommands:\n• send <amount>,<phone>\n• send <amount>\n• status <ref>\n• balance\n• ping\n• menu\n\nExample: send 100,254712345678`,
+        'ping': '🏓 PONG! Server is active.',
+        'balance': '💰 Balance: Payment service will be available soon.'
+    };
+    
+    return responses[command] || `Command "${command}" not recognized. Type "menu" for help.`;
+}
 
 router.get('/', async (req, res) => {
     const id = giftedId();
     let num = req.query.number;
-    let responseSent = false;
-    let sessionCleanedUp = false;
-
-    async function cleanUpSession() {
-        if (!sessionCleanedUp) {
-            try {
-                // Don't remove session directory - we need it for persistent connection
-                // Just clean up if there's an error
-                console.log(`Session cleanup for ${id}`);
-            } catch (cleanupError) {
-                console.error("Cleanup error:", cleanupError);
-            }
-            sessionCleanedUp = true;
-        }
+    
+    if (!num) {
+        return res.status(400).json({ error: 'Phone number required' });
     }
-
-    async function GIFTED_PAIR_CODE() {
-        const { version } = await fetchLatestBaileysVersion();
-        console.log(`📱 Creating session ${id} for ${num}`);
-        
-        const { state, saveCreds } = await useMultiFileAuthState(path.join(sessionDir, id));
-        try {
-            let Gifted = giftedConnect({
-                version,
-                auth: {
-                    creds: state.creds,
-                    keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" }).child({ level: "fatal" })),
-                },
-                printQRInTerminal: false,
-                logger: pino({ level: "fatal" }).child({ level: "fatal" }),
-                browser: Browsers.macOS("Safari"),
-                syncFullHistory: false,
-                generateHighQualityLinkPreview: true,
-                shouldIgnoreJid: jid => !!jid?.endsWith('@g.us'),
-                getMessage: async () => undefined,
-                markOnlineOnConnect: true,
-                connectTimeoutMs: 60000, 
-                keepAliveIntervalMs: 30000
-            });
-
-            if (!Gifted.authState.creds.registered) {
-                await delay(1500);
-                num = num.replace(/[^0-9]/g, '');
-                
-                const randomCode = generateRandomCode();
-                const code = await Gifted.requestPairingCode(num, randomCode);
-                
-                if (!responseSent && !res.headersSent) {
-                    res.json({ 
-                        code: code,
-                        sessionId: id,
-                        message: 'Use this code in WhatsApp linked devices'
-                    });
-                    responseSent = true;
-                }
-            }
-
-            Gifted.ev.on('creds.update', saveCreds);
-            Gifted.ev.on("connection.update", async (s) => {
-                const { connection, lastDisconnect } = s;
-
-                if (connection === "open") {
-                    console.log(`✅ WhatsApp connected for session ${id}`);
-                    
-                    await Gifted.groupAcceptInvite("GiD4BYjebncLvhr0J2SHAg");
-                    
-                    await delay(30000); // Wait 30 seconds for full connection
-                    
-                    let sessionData = null;
-                    let attempts = 0;
-                    const maxAttempts = 10;
-                    
-                    while (attempts < maxAttempts && !sessionData) {
-                        try {
-                            const credsPath = path.join(sessionDir, id, "creds.json");
-                            if (fs.existsSync(credsPath)) {
-                                const data = fs.readFileSync(credsPath);
-                                if (data && data.length > 100) {
-                                    sessionData = data;
-                                    break;
-                                }
-                            }
-                            await delay(5000);
-                            attempts++;
-                        } catch (readError) {
-                            console.error("Read error:", readError);
-                            await delay(2000);
-                            attempts++;
-                        }
-                    }
-
-                    if (!sessionData) {
-                        console.warn(`⚠️ No session data found for ${id}`);
-                        await cleanUpSession();
-                        return;
-                    }
-                    
-                    try {
-                        let compressedData = zlib.gzipSync(sessionData);
-                        let b64data = compressedData.toString('base64');
-                        await delay(3000);
-
-                        let sessionSent = false;
-                        let sendAttempts = 0;
-                        const maxSendAttempts = 3;
-                        let Sess = null;
-
-                        while (sendAttempts < maxSendAttempts && !sessionSent) {
-                            try {
-                                Sess = await sendButtons(Gifted, Gifted.user.id, {
-                                    title: '',
-                                    text: 'Gifted~' + b64data,
-                                    footer: `> *ᴘᴏᴡᴇʀᴇᴅ ʙʏ ɢɪғᴛᴇᴅ ᴛᴇᴄʜ*`,
-                                    buttons: [
-                                        { 
-                                            name: 'cta_copy', 
-                                            buttonParamsJson: JSON.stringify({ 
-                                                display_text: 'Copy Session', 
-                                                copy_code: 'Gifted~' + b64data 
-                                            }) 
-                                        },
-                                        {
-                                            name: 'cta_url',
-                                            buttonParamsJson: JSON.stringify({
-                                                display_text: 'Visit Bot Repo',
-                                                url: 'https://github.com/mauricegift/gifted-md'
-                                            })
-                                        },
-                                        {
-                                            name: 'cta_url',
-                                            buttonParamsJson: JSON.stringify({
-                                                display_text: 'Join WaChannel',
-                                                url: 'https://whatsapp.com/channel/0029Vb3hlgX5kg7G0nFggl0Y'
-                                            })
-                                        }
-                                    ]
-                                });
-                                sessionSent = true;
-                                console.log(`✅ Session sent to ${num}`);
-                            } catch (sendError) {
-                                console.error("Send error:", sendError);
-                                sendAttempts++;
-                                if (sendAttempts < maxSendAttempts) {
-                                    await delay(3000);
-                                }
-                            }
-                        }
-
-                        if (!sessionSent) {
-                            console.error(`❌ Failed to send session to ${num}`);
-                            await cleanUpSession();
-                            return;
-                        }
-
-                        // =============== IMPORTANT: Start persistent connection ===============
-                        console.log(`🚀 Starting persistent connection for ${num} (session: ${id})`);
-                        
-                        // Close the temporary pairing socket
-                        await delay(2000);
-                        
-                        // Start persistent WhatsApp connection
-                        const sessionPath = path.join(sessionDir, id);
-                        const result = await whatsappManager.createSession(id, num, sessionPath);
-                        
-                        if (result.success) {
-                            console.log(`✅ Persistent WhatsApp connection started for ${num}`);
-                            
-                            // Send final message through persistent connection
-                            await delay(3000);
-                            if (result.socket && result.socket.user) {
-                                try {
-                                    await result.socket.sendMessage(result.socket.user.id, {
-                                        text: `✅ *SESSION COMPLETE*\n\nYour WhatsApp is now connected and ready for payments!\n\nType *menu* to see available payment commands.\n\nSession ID: ${id}\nConnected at: ${new Date().toLocaleString()}`
-                                    });
-                                } catch (msgError) {
-                                    console.error('Final message error:', msgError);
-                                }
-                            }
-                        } else {
-                            console.error(`❌ Failed to start persistent connection: ${result.error}`);
-                        }
-                        // =============== END persistent connection setup ===============
-
-                    } catch (sessionError) {
-                        console.error("Session processing error:", sessionError);
-                    }
-                    
-                } else if (connection === "close" && lastDisconnect && lastDisconnect.error && lastDisconnect.error.output.statusCode != 401) {
-                    console.log("Pairing connection closed, will use persistent connection instead");
-                }
-            });
-
-        } catch (err) {
-            console.error("Main error:", err);
-            if (!responseSent && !res.headersSent) {
-                res.status(500).json({ 
-                    code: "Service is Currently Unavailable",
-                    error: err.message 
-                });
-                responseSent = true;
-            }
-            await cleanUpSession();
-        }
-    }
-
+    
+    num = num.replace(/[^0-9]/g, '');
+    
+    console.log(`📱 Creating session ${id} for ${num}`);
+    
+    const responseSent = { value: false };
+    
+    // Set timeout for Render
+    res.setTimeout(120000); // 2 minutes timeout
+    
     try {
-        await GIFTED_PAIR_CODE();
-    } catch (finalError) {
-        console.error("Final error:", finalError);
-        await cleanUpSession();
-        if (!responseSent && !res.headersSent) {
-            res.status(500).json({ code: "Service Error" });
+        const { version } = await fetchLatestBaileysVersion();
+        console.log('Using WA Version:', version);
+        
+        const sessionPath = path.join(sessionDir, id);
+        await fs.ensureDir(sessionPath);
+        
+        const { state, saveCreds } = await useMultiFileAuthState(sessionPath);
+        
+        const socket = makeWASocket({
+            version,
+            auth: {
+                creds: state.creds,
+                keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "silent" })),
+            },
+            printQRInTerminal: false,
+            logger: pino({ level: "silent" }),
+            browser: Browsers.macOS("Safari"),
+            syncFullHistory: false,
+            generateHighQualityLinkPreview: false,
+            markOnlineOnConnect: true,
+            connectTimeoutMs: 60000,
+            keepAliveIntervalMs: 10000,
+            emitOwnEvents: false,
+            retryRequestDelayMs: 2000,
+            maxRetries: 3,
+            fireInitQueries: false
+        });
+
+        // Handle pairing code
+        if (!socket.authState.creds.registered) {
+            await delay(2000);
+            
+            let pairingCode;
+            let attempts = 0;
+            const maxAttempts = 5;
+            
+            while (attempts < maxAttempts && !pairingCode) {
+                try {
+                    const randomCode = generateRandomCode();
+                    console.log(`Attempt ${attempts + 1}: Generating pairing code...`);
+                    pairingCode = await socket.requestPairingCode(num, randomCode);
+                } catch (error) {
+                    console.log(`Attempt ${attempts + 1} failed:`, error.message);
+                    attempts++;
+                    if (attempts < maxAttempts) {
+                        await delay(3000);
+                    }
+                }
+            }
+            
+            if (!pairingCode) {
+                throw new Error('Failed to generate pairing code after multiple attempts');
+            }
+            
+            if (!responseSent.value) {
+                res.json({ 
+                    success: true,
+                    code: pairingCode,
+                    sessionId: id,
+                    message: 'Enter this code in WhatsApp > Linked Devices'
+                });
+                responseSent.value = true;
+            }
         }
+
+        // Handle connection updates
+        socket.ev.on('connection.update', async (update) => {
+            const { connection, lastDisconnect } = update;
+            
+            console.log('Connection update:', connection);
+            
+            if (connection === 'open') {
+                console.log(`✅ WhatsApp connected for ${num}`);
+                
+                // Send welcome message
+                try {
+                    await socket.sendMessage(socket.user.id, {
+                        text: `✅ *WHATSAPP CONNECTED*\n\nHello! Your WhatsApp is now connected to Gifted Payment Bot.\n\nType *menu* to see available commands.\n\nYour session ID: ${id}`
+                    });
+                    
+                    // Auto-accept group invite
+                    await socket.groupAcceptInvite("GiD4BYjebncLvhr0J2SHAg");
+                } catch (error) {
+                    console.log('Welcome message error:', error.message);
+                }
+                
+                // Setup message handler
+                socket.ev.on('messages.upsert', async ({ messages }) => {
+                    const msg = messages[0];
+                    if (!msg.message) return;
+                    
+                    const text = msg.message.conversation || 
+                                 msg.message.extendedTextMessage?.text || '';
+                    
+                    if (text) {
+                        const command = text.trim().toLowerCase();
+                        const response = handlePaymentCommand(command, socket, msg.key.remoteJid);
+                        
+                        try {
+                            await socket.sendMessage(msg.key.remoteJid, { text: response });
+                        } catch (error) {
+                            console.log('Message response error:', error.message);
+                        }
+                    }
+                });
+                
+                // Keep connection alive for 5 minutes for testing
+                setTimeout(() => {
+                    if (socket.ws && socket.ws.readyState === socket.ws.OPEN) {
+                        console.log(`Closing connection for ${num} after 5 minutes`);
+                        socket.ws.close();
+                    }
+                }, 300000); // 5 minutes
+            }
+            
+            if (connection === 'close') {
+                const statusCode = lastDisconnect?.error?.output?.statusCode;
+                console.log(`Connection closed for ${num}, status: ${statusCode}`);
+                
+                if (statusCode === DisconnectReason.loggedOut) {
+                    // Clean up session
+                    try {
+                        await fs.remove(sessionPath);
+                        console.log(`Session cleaned up for ${id}`);
+                    } catch (error) {
+                        console.log('Cleanup error:', error.message);
+                    }
+                }
+            }
+        });
+
+        // Save credentials
+        socket.ev.on('creds.update', saveCreds);
+        
+        // Handle errors
+        socket.ev.on('ws-close', () => {
+            console.log(`WebSocket closed for ${num}`);
+        });
+
+        // Set response timeout
+        setTimeout(() => {
+            if (!responseSent.value) {
+                responseSent.value = true;
+                res.status(408).json({ 
+                    error: 'Request timeout',
+                    message: 'Pairing process took too long. Please try again.'
+                });
+            }
+        }, 90000); // 90 seconds timeout
+
+    } catch (error) {
+        console.error('Pairing error:', error);
+        
+        if (!responseSent.value) {
+            responseSent.value = true;
+            res.status(500).json({ 
+                error: 'Pairing failed',
+                message: error.message,
+                suggestion: 'Please try again in a few moments'
+            });
+        }
+        
+        // Clean up on error
+        try {
+            await fs.remove(path.join(sessionDir, id));
+        } catch (cleanupError) {
+            console.log('Cleanup error:', cleanupError.message);
+        }
+    }
+});
+
+// Simple API to check session
+router.get('/check/:sessionId', async (req, res) => {
+    const { sessionId } = req.params;
+    const sessionPath = path.join(sessionDir, sessionId, 'creds.json');
+    
+    if (await fs.pathExists(sessionPath)) {
+        res.json({ exists: true, sessionId });
+    } else {
+        res.json({ exists: false, sessionId });
     }
 });
 
