@@ -4,4 +4,4 @@ const pairRoute = require('./pair');
 module.exports = {
     qrRoute,
     pairRoute
-};
+}
