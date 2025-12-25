@@ -14,6 +14,12 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Import WhatsApp manager
+const { 
+  getAllActiveSessions, 
+  getActiveSessionCount,
+  disconnectAllSessions 
+} = require('./whatsapp-manager');
 
 app.use('/qr', qrRoute);
 app.use('/code', pairRoute);
@@ -26,21 +32,58 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-
+// Health check with active sessions info
 app.get('/health', (req, res) => {
     res.json({
         status: 200,
         success: true,
-        service: 'Gifted-Md Session',
-        timestamp: new Date().toISOString()
+        service: 'Gifted-Md Session with STK Payments',
+        timestamp: new Date().toISOString(),
+        active_sessions: getActiveSessionCount(),
+        payment_service: 'Integrated'
+    });
+});
+
+// List all active sessions
+app.get('/sessions', (req, res) => {
+    const sessions = getAllActiveSessions();
+    res.json({
+        count: sessions.length,
+        sessions: sessions
+    });
+});
+
+// Disconnect all sessions
+app.delete('/sessions', (req, res) => {
+    disconnectAllSessions();
+    res.json({
+        success: true,
+        message: 'All active sessions disconnected'
     });
 });
 
 app.listen(PORT, () => {
     console.log(`
-Deployment Successful!
+╔═══════════════════════════════════════════════════╗
+║      GIFTED SESSION SERVER WITH STK PAYMENTS      ║
+╠═══════════════════════════════════════════════════╣
+║                                                   ║
+║  ✅ Server running on http://localhost:${PORT}     ║
+║  ✅ QR Code: http://localhost:${PORT}/qr          ║
+║  ✅ Pair Code: http://localhost:${PORT}/pair      ║
+║  ✅ Health: http://localhost:${PORT}/health       ║
+║  ✅ Active Sessions: http://localhost:${PORT}/sessions ║
+║                                                   ║
+║  📱 Payment Commands Available:                   ║
+║     • menu                                        ║
+║     • send <amount>                               ║
+║     • send <amount>,<phone>                       ║
+║     • status <reference>                          ║
+║     • balance                                     ║
+║     • ping                                        ║
+║                                                   ║
+╚═══════════════════════════════════════════════════╝
+`);
+});
 
- Gifted-Session-Server Running on http://localhost:` + PORT)
-})
-
-module.exports = app
+module.exports = app;
